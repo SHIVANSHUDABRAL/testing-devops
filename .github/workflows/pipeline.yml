@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # Job 1: Test
+  test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -21,13 +21,65 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: echo "No dependencies yet"
+        run: |
+          if [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json found, skipping install"
+          fi
 
       - name: Run Tests
-        run: echo "No tests yet"
+        run: |
+          if [ -f package.json ] && grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "No test script found, skipping tests"
+          fi
+
+  # Job 2: Build
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
 
       - name: Build project
-        run: echo "Build step placeholder"
+        run: |
+          if [ -f package.json ] && grep -q '"build"' package.json; then
+            npm run build
+          else
+            echo "No build script found, skipping build"
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist/
+            build/
+          if-no-files-found: ignore
+
+  # Job 3: Deploy
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+        continue-on-error: true
 
       - name: Deploy
-        run: echo "Deploy step placeholder"
+        run: echo "Deploying to production..."
