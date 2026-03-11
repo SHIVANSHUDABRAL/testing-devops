@@ -142,3 +142,8 @@ jobs:
               "close_notes": "Deployment completed successfully via GitHub Actions. Commit: ${{ github.sha }}"
             }'
           echo "✅ Change Request updated to Implemented"
+
+
+**Pipeline flow:**
+```
+test → build → create-change-request → deploy → update-change-request
