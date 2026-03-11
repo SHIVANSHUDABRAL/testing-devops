@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -29,8 +29,5 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Deploy (example)
+      - name: Deploy
         run: echo "Deploying to server..."
-        # Replace with real deploy command e.g.:
-        # run: npm run deploy
-        # or use actions like AWS, Azure, Vercel etc.
