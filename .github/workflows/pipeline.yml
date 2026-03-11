@@ -96,7 +96,6 @@ jobs:
 
           echo "Response: $RESPONSE"
 
-          # Extract change number and sys_id
           CHANGE_NUMBER=$(echo $RESPONSE | grep -o '"number":{"[^}]*"value":"[^"]*"' | grep -o '"value":"[^"]*"' | head -1 | cut -d'"' -f4)
           CHANGE_SYS_ID=$(echo $RESPONSE | grep -o '"sys_id":{"[^}]*"value":"[^"]*"' | grep -o '"value":"[^"]*"' | head -1 | cut -d'"' -f4)
 
@@ -108,8 +107,8 @@ jobs:
 
       - name: Print Change Request Link
         run: |
-          echo "✅ Change Request Created!"
-          echo "🔗 ${{ secrets.SN_INSTANCE_URL }}/nav_to.do?uri=change_request.do?sysparm_query=number=${{ steps.create_cr.outputs.change_number }}"
+          echo "Change Request Created!"
+          echo "${{ secrets.SN_INSTANCE_URL }}/nav_to.do?uri=change_request.do?sysparm_query=number=${{ steps.create_cr.outputs.change_number }}"
 
   # Job 4: Deploy
   deploy:
@@ -127,9 +126,9 @@ jobs:
         continue-on-error: true
 
       - name: Deploy
-        run: echo "Deploying to production... CR: ${{ needs.create-change-request.outputs.change_number }}"
+        run: echo "Deploying to production... CR ${{ needs.create-change-request.outputs.change_number }}"
 
-      - name: Update Change Request to Deployed
+      - name: Update Change Request to Implemented
         run: |
           curl -s -X PATCH \
             "${{ secrets.SN_INSTANCE_URL }}/api/now/table/change_request/${{ needs.create-change-request.outputs.change_sys_id }}" \
@@ -139,11 +138,6 @@ jobs:
             -d '{
               "state": "3",
               "close_code": "successful",
-              "close_notes": "Deployment completed successfully via GitHub Actions. Commit: ${{ github.sha }}"
+              "close_notes": "Deployment completed via GitHub Actions. Commit: ${{ github.sha }}"
             }'
-          echo "✅ Change Request updated to Implemented"
-
-
-**Pipeline flow:**
-```
-test → build → create-change-request → deploy → update-change-request
+          echo "Change Request updated to Implemented"
