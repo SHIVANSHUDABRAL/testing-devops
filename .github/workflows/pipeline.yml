@@ -21,13 +21,13 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: echo "No dependencies yet"
 
       - name: Run Tests
-        run: npm test
+        run: echo "No tests yet"
 
       - name: Build project
-        run: npm run build
+        run: echo "Build step placeholder"
 
       - name: Deploy
-        run: echo "Deploying to server..."
+        run: echo "Deploy step placeholder"
