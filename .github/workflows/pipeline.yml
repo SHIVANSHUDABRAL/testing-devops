@@ -66,10 +66,55 @@ jobs:
             build/
           if-no-files-found: ignore
 
-  # Job 3: Deploy
-  deploy:
+  # Job 3: Create ServiceNow Change Request
+  create-change-request:
     runs-on: ubuntu-latest
     needs: build
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      change_number: ${{ steps.create_cr.outputs.change_number }}
+      change_sys_id: ${{ steps.create_cr.outputs.change_sys_id }}
+    steps:
+      - name: Create Change Request in ServiceNow
+        id: create_cr
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "${{ secrets.SN_INSTANCE_URL }}/api/now/table/change_request" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -u "${{ secrets.SN_USERNAME }}:${{ secrets.SN_PASSWORD }}" \
+            -d '{
+              "short_description": "Automated deployment from GitHub Actions",
+              "description": "Pipeline triggered by commit: ${{ github.sha }} on branch: ${{ github.ref_name }} by ${{ github.actor }}",
+              "type": "normal",
+              "category": "Software",
+              "priority": "3",
+              "risk": "2",
+              "assignment_group": "Change Management",
+              "cmdb_ci": "Your-App-Name"
+            }')
+
+          echo "Response: $RESPONSE"
+
+          # Extract change number and sys_id
+          CHANGE_NUMBER=$(echo $RESPONSE | grep -o '"number":{"[^}]*"value":"[^"]*"' | grep -o '"value":"[^"]*"' | head -1 | cut -d'"' -f4)
+          CHANGE_SYS_ID=$(echo $RESPONSE | grep -o '"sys_id":{"[^}]*"value":"[^"]*"' | grep -o '"value":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+          echo "Change Request Number: $CHANGE_NUMBER"
+          echo "Change Sys ID: $CHANGE_SYS_ID"
+
+          echo "change_number=$CHANGE_NUMBER" >> $GITHUB_OUTPUT
+          echo "change_sys_id=$CHANGE_SYS_ID" >> $GITHUB_OUTPUT
+
+      - name: Print Change Request Link
+        run: |
+          echo "✅ Change Request Created!"
+          echo "🔗 ${{ secrets.SN_INSTANCE_URL }}/nav_to.do?uri=change_request.do?sysparm_query=number=${{ steps.create_cr.outputs.change_number }}"
+
+  # Job 4: Deploy
+  deploy:
+    runs-on: ubuntu-latest
+    needs: create-change-request
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
@@ -82,4 +127,18 @@ jobs:
         continue-on-error: true
 
       - name: Deploy
-        run: echo "Deploying to production..."
+        run: echo "Deploying to production... CR: ${{ needs.create-change-request.outputs.change_number }}"
+
+      - name: Update Change Request to Deployed
+        run: |
+          curl -s -X PATCH \
+            "${{ secrets.SN_INSTANCE_URL }}/api/now/table/change_request/${{ needs.create-change-request.outputs.change_sys_id }}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -u "${{ secrets.SN_USERNAME }}:${{ secrets.SN_PASSWORD }}" \
+            -d '{
+              "state": "3",
+              "close_code": "successful",
+              "close_notes": "Deployment completed successfully via GitHub Actions. Commit: ${{ github.sha }}"
+            }'
+          echo "✅ Change Request updated to Implemented"
