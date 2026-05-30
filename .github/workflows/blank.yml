@@ -1,28 +1,24 @@
-# ❌ THIS CAUSES PARALLEL EXECUTION - For reference only
 name: Snapshot Pipeline - #5
 
-stages:
-  - name: pipeline_config_load
-    type: build_and_test
-    order: 10
-    steps:
-      - name: load_config
-        action: run_script
-        script: load_pipeline_config.sh
+on: [push]
 
-  - name: build_snapshot_enterprise_intune
-    type: manual          # ← CULPRIT #1: Manual type doesn't wait
-    order: 10             # ← CULPRIT #2: Same order as above = parallel
-    depends_on: []        # ← CULPRIT #3: No dependency defined
+jobs:
+  pipeline_config_load:
+    runs-on: ubuntu-latest
     steps:
-      - name: build_snapshot
-        action: run_script
-        script: build_snapshot.sh
+      - name: Load Config
+        run: echo "Loading pipeline config..."
 
-  - name: appdome_harden_snapshot
-    type: deploy
-    order: 30
+  build_snapshot_enterprise_intune:
+    runs-on: ubuntu-latest
+    # No 'needs' = runs parallel
     steps:
-      - name: harden
-        action: run_script
-        script: harden_snapshot.sh
+      - name: Build Snapshot
+        run: echo "Building snapshot..."
+
+  appdome_harden_snapshot:
+    runs-on: ubuntu-latest
+    # No 'needs' = runs parallel
+    steps:
+      - name: Harden Snapshot
+        run: echo "Hardening snapshot..."
